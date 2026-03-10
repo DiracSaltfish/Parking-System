@@ -1,0 +1,24 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: parking-management
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+  data:
+    redis:
+      host: ${REDIS_HOST:your-remote-redis-host}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
+      timeout: 3000ms
+
+app:
+  auth:
+    token-prefix: Bearer
+  redis:
+    enabled: false
+
+# 当前阶段仅预留 Redis 配置，不依赖本机 Redis 运行。
