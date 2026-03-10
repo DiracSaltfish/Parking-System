@@ -2,8 +2,8 @@ package com.example.parking.service.impl;
 
 import com.example.parking.common.PageResult;
 import com.example.parking.dto.parking.ParkingPaymentRequest;
+import com.example.parking.repository.RedisDataStore;
 import com.example.parking.service.UserParkingService;
-import com.example.parking.support.InMemoryDataStore;
 import com.example.parking.util.DateTimeUtils;
 import com.example.parking.util.FeeCalculator;
 import com.example.parking.util.PageUtils;
@@ -19,9 +19,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserParkingServiceImpl implements UserParkingService {
 
-    private final InMemoryDataStore dataStore;
+    private final RedisDataStore dataStore;
 
-    public UserParkingServiceImpl(InMemoryDataStore dataStore) {
+    public UserParkingServiceImpl(RedisDataStore dataStore) {
         this.dataStore = dataStore;
     }
 

@@ -37,7 +37,7 @@ public class AdminParkingController {
 
     @PostMapping("/entry")
     public ApiResponse<Map<String, Object>> entry(@Valid @RequestBody ParkingEntryRequest request) {
-        return ApiResponse.todo("已创建接口骨架，等待接入 Redis", adminParkingService.entry(request));
+        return ApiResponse.success("入场登记成功", adminParkingService.entry(request));
     }
 
     @PostMapping("/exit")

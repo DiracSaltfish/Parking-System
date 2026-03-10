@@ -157,7 +157,7 @@ public class InMemoryDataStore {
         for (String vehicleId : vehicleIds) {
             result.add(cloneMap(vehiclesById.get(vehicleId)));
         }
-        result.sort(Comparator.comparing(item -> (String) item.get("vehicleId")).reversed());
+        result.sort(Comparator.comparing((Map<String, Object> item) -> (String) item.get("vehicleId")).reversed());
         return result;
     }
 
@@ -235,7 +235,7 @@ public class InMemoryDataStore {
                 result.add(cloneMap(parkingRecordsById.get(recordId)));
             }
         }
-        result.sort(Comparator.comparing(item -> (LocalDateTime) item.get("entryTime")).reversed());
+        result.sort(Comparator.comparing((Map<String, Object> item) -> (LocalDateTime) item.get("entryTime")).reversed());
         return result;
     }
 
@@ -245,7 +245,7 @@ public class InMemoryDataStore {
         for (String paymentId : paymentIds) {
             result.add(cloneMap(paymentsById.get(paymentId)));
         }
-        result.sort(Comparator.comparing(item -> (LocalDateTime) item.get("payTime")).reversed());
+        result.sort(Comparator.comparing((Map<String, Object> item) -> (LocalDateTime) item.get("payTime")).reversed());
         return result;
     }
 
@@ -273,7 +273,7 @@ public class InMemoryDataStore {
         for (String recordId : currentRecordIdByPlate.values()) {
             result.add(cloneMap(parkingRecordsById.get(recordId)));
         }
-        result.sort(Comparator.comparing(item -> (LocalDateTime) item.get("entryTime")).reversed());
+        result.sort(Comparator.comparing((Map<String, Object> item) -> (LocalDateTime) item.get("entryTime")).reversed());
         return result;
     }
 
@@ -282,7 +282,7 @@ public class InMemoryDataStore {
         for (Map<String, Object> record : parkingRecordsById.values()) {
             result.add(cloneMap(record));
         }
-        result.sort(Comparator.comparing(item -> (LocalDateTime) item.get("entryTime")).reversed());
+        result.sort(Comparator.comparing((Map<String, Object> item) -> (LocalDateTime) item.get("entryTime")).reversed());
         return result;
     }
 

@@ -3,8 +3,8 @@ package com.example.parking.service.impl;
 import com.example.parking.dto.auth.AdminLoginRequest;
 import com.example.parking.dto.auth.UserLoginRequest;
 import com.example.parking.dto.auth.UserRegisterRequest;
+import com.example.parking.repository.RedisDataStore;
 import com.example.parking.service.AuthService;
-import com.example.parking.support.InMemoryDataStore;
 import com.example.parking.util.DateTimeUtils;
 import com.example.parking.vo.auth.LoginResponse;
 import java.util.LinkedHashMap;
@@ -14,9 +14,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class AuthServiceImpl implements AuthService {
 
-    private final InMemoryDataStore dataStore;
+    private final RedisDataStore dataStore;
 
-    public AuthServiceImpl(InMemoryDataStore dataStore) {
+    public AuthServiceImpl(RedisDataStore dataStore) {
         this.dataStore = dataStore;
     }
 

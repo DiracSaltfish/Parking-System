@@ -1,8 +1,8 @@
 package com.example.parking.service.impl;
 
 import com.example.parking.dto.vehicle.VehicleBindRequest;
+import com.example.parking.repository.RedisDataStore;
 import com.example.parking.service.UserVehicleService;
-import com.example.parking.support.InMemoryDataStore;
 import com.example.parking.util.DateTimeUtils;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -14,9 +14,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class UserVehicleServiceImpl implements UserVehicleService {
 
-    private final InMemoryDataStore dataStore;
+    private final RedisDataStore dataStore;
 
-    public UserVehicleServiceImpl(InMemoryDataStore dataStore) {
+    public UserVehicleServiceImpl(RedisDataStore dataStore) {
         this.dataStore = dataStore;
     }
 

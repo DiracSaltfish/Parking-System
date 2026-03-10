@@ -4,39 +4,44 @@ import com.example.parking.common.PageResult;
 import com.example.parking.dto.parking.ParkingEntryRequest;
 import com.example.parking.dto.parking.ParkingExemptionRequest;
 import com.example.parking.dto.parking.ParkingExitRequest;
+import com.example.parking.repository.RedisDataStore;
 import com.example.parking.service.AdminParkingService;
+import com.example.parking.util.DateTimeUtils;
+import com.example.parking.util.FeeCalculator;
+import com.example.parking.util.PageUtils;
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AdminParkingServiceImpl implements AdminParkingService {
 
+    private final RedisDataStore dataStore;
+
+    public AdminParkingServiceImpl(RedisDataStore dataStore) {
+        this.dataStore = dataStore;
+    }
+
     @Override
     public PageResult<Map<String, Object>> current(String plateNumber, String payStatus, int pageNum, int pageSize) {
-        List<Map<String, Object>> records = List.of(
-                Map.of(
-                        "recordId", "R1001",
-                        "plateNumber", "粤B12345",
-                        "spaceCode", "A-021",
-                        "entryTime", "2026-03-10 17:30:00",
-                        "durationMinutes", 145,
-                        "finalAmount", new BigDecimal("15.00"),
-                        "payStatus", "UNPAID"
-                )
-        );
-        return new PageResult<>(records.size(), pageNum, pageSize, records);
+        List<Map<String, Object>> records = dataStore.listCurrentParkingRecords().stream()
+                .filter(record -> plateNumber == null || plateNumber.isBlank()
+                        || String.valueOf(record.get("plateNumber")).contains(plateNumber.trim().toUpperCase()))
+                .filter(record -> payStatus == null || payStatus.isBlank()
+                        || payStatus.equals(record.get("payStatus")))
+                .map(record -> toParkingView(record, true))
+                .collect(Collectors.toList());
+        return PageUtils.page(records, pageNum, pageSize);
     }
 
     @Override
     public Map<String, Object> entry(ParkingEntryRequest request) {
-        return Map.of(
-                "recordId", "R1002",
-                "plateNumber", request.plateNumber(),
-                "spaceId", request.spaceId() == null || request.spaceId().isBlank() ? "AUTO-S001" : request.spaceId(),
-                "message", "已创建入场记录，当前为骨架返回"
-        );
+        return toParkingView(dataStore.createParkingEntry(request.plateNumber(), request.spaceId()), true);
     }
 
     @Override
@@ -50,21 +55,16 @@ public class AdminParkingServiceImpl implements AdminParkingService {
 
     @Override
     public PageResult<Map<String, Object>> records(String plateNumber, String recordStatus, String payStatus, int pageNum, int pageSize) {
-        List<Map<String, Object>> records = List.of(
-                Map.of(
-                        "recordId", "R0999",
-                        "plateNumber", "粤B12345",
-                        "entryTime", "2026-03-09 09:30:00",
-                        "exitTime", "2026-03-09 12:00:00",
-                        "durationMinutes", 150,
-                        "originalAmount", new BigDecimal("15.00"),
-                        "discountAmount", new BigDecimal("0.00"),
-                        "finalAmount", new BigDecimal("15.00"),
-                        "payStatus", "PAID",
-                        "recordStatus", "COMPLETED"
-                )
-        );
-        return new PageResult<>(records.size(), pageNum, pageSize, records);
+        List<Map<String, Object>> records = dataStore.listAllParkingRecords().stream()
+                .filter(record -> plateNumber == null || plateNumber.isBlank()
+                        || String.valueOf(record.get("plateNumber")).contains(plateNumber.trim().toUpperCase()))
+                .filter(record -> recordStatus == null || recordStatus.isBlank()
+                        || recordStatus.equals(record.get("recordStatus")))
+                .filter(record -> payStatus == null || payStatus.isBlank()
+                        || payStatus.equals(record.get("payStatus")))
+                .map(record -> toParkingView(record, false))
+                .collect(Collectors.toList());
+        return PageUtils.page(records, pageNum, pageSize);
     }
 
     @Override
@@ -88,5 +88,44 @@ public class AdminParkingServiceImpl implements AdminParkingService {
                 "operatorId", "A1001",
                 "operateTime", "2026-03-10 20:20:00"
         );
+    }
+
+    private Map<String, Object> toParkingView(Map<String, Object> record, boolean currentView) {
+        LocalDateTime entryTime = (LocalDateTime) record.get("entryTime");
+        LocalDateTime exitTime = (LocalDateTime) record.get("exitTime");
+        int durationMinutes = (int) Duration.between(entryTime, exitTime == null ? LocalDateTime.now() : exitTime).toMinutes();
+        BigDecimal originalAmount = FeeCalculator.calculate(durationMinutes);
+        BigDecimal discountAmount = (BigDecimal) record.getOrDefault("discountAmount", BigDecimal.ZERO);
+        BigDecimal finalAmount = originalAmount.subtract(discountAmount);
+        if (finalAmount.compareTo(BigDecimal.ZERO) < 0 || "EXEMPTED".equals(record.get("payStatus"))) {
+            finalAmount = BigDecimal.ZERO;
+        }
+
+        String ownerName = "临时车辆";
+        Object userId = record.get("userId");
+        if (userId instanceof String userIdValue && !userIdValue.isBlank()) {
+            Map<String, Object> user = dataStore.findUserById(userIdValue);
+            if (user != null && user.get("realName") != null && !String.valueOf(user.get("realName")).isBlank()) {
+                ownerName = String.valueOf(user.get("realName"));
+            }
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("recordId", record.get("recordId"));
+        result.put("plateNumber", record.get("plateNumber"));
+        result.put("ownerName", ownerName);
+        result.put("spaceCode", record.get("spaceCode"));
+        result.put("entryTime", DateTimeUtils.format(entryTime));
+        result.put("exitTime", DateTimeUtils.format(exitTime));
+        result.put("durationMinutes", durationMinutes);
+        result.put("originalAmount", originalAmount);
+        result.put("discountAmount", discountAmount);
+        result.put("finalAmount", finalAmount);
+        result.put("payStatus", record.get("payStatus"));
+        result.put("recordStatus", record.get("recordStatus"));
+        if (currentView) {
+            result.put("active", true);
+        }
+        return result;
     }
 }

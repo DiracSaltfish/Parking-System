@@ -8,7 +8,6 @@ import { passwordPattern, patternRule, requiredRule, usernamePattern } from '@/u
 
 const router = useRouter()
 const sessionStore = useSessionStore()
-const activeRole = ref('ADMIN')
 const formRef = ref()
 
 const form = reactive({
@@ -34,11 +33,11 @@ async function handleLogin() {
   }
 
   try {
-    const api = activeRole.value === 'ADMIN' ? adminLogin : userLogin
+    const api = form.username === 'admin' ? adminLogin : userLogin
     const { data } = await api({ ...form })
     sessionStore.login(data.data)
     ElMessage.success('登录成功')
-    router.push(activeRole.value === 'ADMIN' ? '/admin/dashboard' : '/user/home')
+    router.push(data.data?.role === 'ADMIN' ? '/admin/dashboard' : '/user/home')
   } catch (error) {
     ElMessage.error(error.response?.data?.message || '登录失败，请确认后端是否启动')
   }
@@ -55,9 +54,14 @@ async function handleLogin() {
       </div>
 
       <el-card shadow="never" class="auth-card">
-        <el-segmented v-model="activeRole" :options="['ADMIN', 'USER']" block />
         <el-form ref="formRef" :model="form" :rules="rules" class="auth-form" label-position="top">
-          <el-form-item :label="activeRole === 'ADMIN' ? '管理员账号' : '用户账号'" prop="username">
+          <el-alert
+            title="登录规则：账号为 admin 时进入管理员端，其他账号进入用户端"
+            type="info"
+            :closable="false"
+            show-icon
+          />
+          <el-form-item label="账号" prop="username">
             <el-input v-model.trim="form.username" maxlength="16" placeholder="请输入账号" />
           </el-form-item>
           <el-form-item label="密码" prop="password">
