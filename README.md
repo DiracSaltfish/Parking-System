@@ -25,8 +25,8 @@
 
 ## 演示账号
 
-- 管理员：`admin / 123456`
-- 普通用户：`zhangsan / 123456`
+- 管理员：`admin / Admin123`
+- 普通用户：`zhangsan / User1234`
 
 说明：
 

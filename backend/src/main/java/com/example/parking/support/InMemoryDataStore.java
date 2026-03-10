@@ -48,7 +48,7 @@ public class InMemoryDataStore {
         Map<String, Object> admin = new LinkedHashMap<>();
         admin.put("id", "A1001");
         admin.put("username", "admin");
-        admin.put("password", "123456");
+        admin.put("password", "Admin123");
         admin.put("displayName", "系统管理员");
         admin.put("role", "ADMIN");
         adminsByUsername.put("admin", admin);
@@ -59,7 +59,7 @@ public class InMemoryDataStore {
         Map<String, Object> user = new LinkedHashMap<>();
         user.put("userId", userId);
         user.put("username", "zhangsan");
-        user.put("password", "123456");
+        user.put("password", "User1234");
         user.put("phone", "13800138000");
         user.put("realName", "张三");
         user.put("status", "ACTIVE");

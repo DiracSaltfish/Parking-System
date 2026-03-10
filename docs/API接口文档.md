@@ -68,7 +68,7 @@ Content-Type: application/json
 ```json
 {
   "username": "admin",
-  "password": "123456"
+  "password": "Admin123"
 }
 ```
 
@@ -98,7 +98,7 @@ Content-Type: application/json
 ```json
 {
   "username": "zhangsan",
-  "password": "123456",
+  "password": "User1234",
   "phone": "13800138000",
   "realName": "张三"
 }
@@ -114,7 +114,7 @@ Content-Type: application/json
 ```json
 {
   "username": "zhangsan",
-  "password": "123456"
+  "password": "User1234"
 }
 ```
 
