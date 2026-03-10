@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,23 +27,30 @@ public class UserVehicleController {
     }
 
     @GetMapping
-    public ApiResponse<List<Map<String, Object>>> vehicles() {
-        return ApiResponse.success(userVehicleService.vehicles());
+    public ApiResponse<List<Map<String, Object>>> vehicles(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        return ApiResponse.success(userVehicleService.vehicles(authorizationHeader));
     }
 
     @PostMapping
-    public ApiResponse<Map<String, Object>> bind(@Valid @RequestBody VehicleBindRequest request) {
-        return ApiResponse.todo("已创建接口骨架，等待接入 Redis", userVehicleService.bind(request));
+    public ApiResponse<Map<String, Object>> bind(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @Valid @RequestBody VehicleBindRequest request) {
+        return ApiResponse.success("绑定成功", userVehicleService.bind(authorizationHeader, request));
     }
 
     @PutMapping("/{vehicleId}")
-    public ApiResponse<Map<String, Object>> update(@PathVariable String vehicleId,
+    public ApiResponse<Map<String, Object>> update(
+                                                   @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+                                                   @PathVariable String vehicleId,
                                                    @Valid @RequestBody VehicleBindRequest request) {
-        return ApiResponse.todo("已创建接口骨架，等待接入 Redis", userVehicleService.update(vehicleId, request));
+        return ApiResponse.success("修改成功", userVehicleService.update(authorizationHeader, vehicleId, request));
     }
 
     @DeleteMapping("/{vehicleId}")
-    public ApiResponse<Map<String, Object>> delete(@PathVariable String vehicleId) {
-        return ApiResponse.todo("已创建接口骨架，等待接入 Redis", userVehicleService.delete(vehicleId));
+    public ApiResponse<Map<String, Object>> delete(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @PathVariable String vehicleId) {
+        return ApiResponse.success("删除成功", userVehicleService.delete(authorizationHeader, vehicleId));
     }
 }

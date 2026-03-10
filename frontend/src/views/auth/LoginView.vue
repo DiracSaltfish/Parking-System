@@ -3,39 +3,45 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useSessionStore } from '@/stores/session'
+import { adminLogin, userLogin } from '@/api/auth'
+import { passwordPattern, patternRule, requiredRule, usernamePattern } from '@/utils/validators'
 
 const router = useRouter()
 const sessionStore = useSessionStore()
 const activeRole = ref('ADMIN')
+const formRef = ref()
 
 const form = reactive({
   username: '',
   password: ''
 })
 
-function handleLogin() {
-  if (!form.username || !form.password) {
-    ElMessage.warning('请输入用户名和密码')
+const rules = {
+  username: [
+    requiredRule('请输入账号'),
+    patternRule(usernamePattern, '账号仅支持 4-16 位字母、数字或下划线')
+  ],
+  password: [
+    requiredRule('请输入密码'),
+    patternRule(passwordPattern, '密码需为 6-20 位，且至少包含字母和数字')
+  ]
+}
+
+async function handleLogin() {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) {
     return
   }
 
-  const payload = activeRole.value === 'ADMIN'
-    ? {
-        token: 'admin-token-demo',
-        role: 'ADMIN',
-        username: form.username,
-        displayName: '系统管理员'
-      }
-    : {
-        token: 'user-token-demo',
-        role: 'USER',
-        username: form.username,
-        displayName: form.username
-      }
-
-  sessionStore.login(payload)
-  ElMessage.success('登录成功，当前为页面骨架演示')
-  router.push(activeRole.value === 'ADMIN' ? '/admin/dashboard' : '/user/home')
+  try {
+    const api = activeRole.value === 'ADMIN' ? adminLogin : userLogin
+    const { data } = await api({ ...form })
+    sessionStore.login(data.data)
+    ElMessage.success('登录成功')
+    router.push(activeRole.value === 'ADMIN' ? '/admin/dashboard' : '/user/home')
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '登录失败，请确认后端是否启动')
+  }
 }
 </script>
 
@@ -45,17 +51,17 @@ function handleLogin() {
       <div class="auth-panel__intro">
         <p class="auth-panel__eyebrow">Vue 3 + Spring Boot</p>
         <h1>停车场管理系统</h1>
-        <p>当前版本已经完成双角色页面骨架，后续可直接接入后端接口和远程 Redis。</p>
+        <p>当前版本优先打通用户主流程，管理员与用户登录都已切到真实接口。</p>
       </div>
 
       <el-card shadow="never" class="auth-card">
         <el-segmented v-model="activeRole" :options="['ADMIN', 'USER']" block />
-        <el-form class="auth-form" label-position="top">
-          <el-form-item :label="activeRole === 'ADMIN' ? '管理员账号' : '用户账号'">
-            <el-input v-model="form.username" placeholder="请输入账号" />
+        <el-form ref="formRef" :model="form" :rules="rules" class="auth-form" label-position="top">
+          <el-form-item :label="activeRole === 'ADMIN' ? '管理员账号' : '用户账号'" prop="username">
+            <el-input v-model.trim="form.username" maxlength="16" placeholder="请输入账号" />
           </el-form-item>
-          <el-form-item label="密码">
-            <el-input v-model="form.password" show-password placeholder="请输入密码" />
+          <el-form-item label="密码" prop="password">
+            <el-input v-model.trim="form.password" maxlength="20" show-password placeholder="请输入密码" />
           </el-form-item>
           <el-button type="primary" size="large" class="block-button" @click="handleLogin">
             登录系统

@@ -1,13 +1,36 @@
 <script setup>
+import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import SummaryCard from '@/components/SummaryCard.vue'
-import { userCurrentParking, userVehicles, userPayments } from '@/mock/data'
+import { getCurrentParking, getMyPayments, getMyVehicles } from '@/api/user'
 
-const summary = [
-  { title: '绑定车辆', value: `${userVehicles.length} 辆`, tone: 'mint' },
-  { title: '当前停车位', value: userCurrentParking.spaceCode, tone: 'ocean' },
-  { title: '待缴金额', value: `${userCurrentParking.finalAmount} 元`, tone: 'ember' },
-  { title: '历史支付', value: `${userPayments.length} 笔`, tone: 'sun' }
-]
+const vehicles = ref([])
+const currentParking = ref(null)
+const payments = ref([])
+
+const summary = computed(() => [
+  { title: '绑定车辆', value: `${vehicles.value.length} 辆`, tone: 'mint' },
+  { title: '当前停车位', value: currentParking.value?.spaceCode || '暂无', tone: 'ocean' },
+  { title: '待缴金额', value: `${currentParking.value?.finalAmount ?? 0} 元`, tone: 'ember' },
+  { title: '历史支付', value: `${payments.value.length} 笔`, tone: 'sun' }
+])
+
+async function loadData() {
+  try {
+    const [vehicleRes, currentRes, paymentRes] = await Promise.all([
+      getMyVehicles(),
+      getCurrentParking(),
+      getMyPayments()
+    ])
+    vehicles.value = vehicleRes.data.data || []
+    currentParking.value = currentRes.data.data?.active === false ? null : currentRes.data.data
+    payments.value = paymentRes.data.data?.records || []
+  } catch (error) {
+    ElMessage.error(error.response?.data?.message || '用户首页数据加载失败')
+  }
+}
+
+onMounted(loadData)
 </script>
 
 <template>
@@ -31,12 +54,13 @@ const summary = [
           </div>
         </div>
       </template>
-      <div class="info-grid">
-        <div class="info-pill"><span>车牌号</span><strong>{{ userCurrentParking.plateNumber }}</strong></div>
-        <div class="info-pill"><span>入场时间</span><strong>{{ userCurrentParking.entryTime }}</strong></div>
-        <div class="info-pill"><span>停车时长</span><strong>{{ userCurrentParking.durationMinutes }} 分钟</strong></div>
-        <div class="info-pill"><span>当前费用</span><strong>{{ userCurrentParking.finalAmount }} 元</strong></div>
+      <div v-if="currentParking" class="info-grid">
+        <div class="info-pill"><span>车牌号</span><strong>{{ currentParking.plateNumber }}</strong></div>
+        <div class="info-pill"><span>入场时间</span><strong>{{ currentParking.entryTime }}</strong></div>
+        <div class="info-pill"><span>停车时长</span><strong>{{ currentParking.durationMinutes }} 分钟</strong></div>
+        <div class="info-pill"><span>当前费用</span><strong>{{ currentParking.finalAmount }} 元</strong></div>
       </div>
+      <el-empty v-else description="当前没有在场车辆" />
     </el-card>
   </div>
 </template>

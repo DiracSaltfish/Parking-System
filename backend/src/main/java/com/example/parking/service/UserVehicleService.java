@@ -6,11 +6,11 @@ import java.util.Map;
 
 public interface UserVehicleService {
 
-    List<Map<String, Object>> vehicles();
+    List<Map<String, Object>> vehicles(String authorizationHeader);
 
-    Map<String, Object> bind(VehicleBindRequest request);
+    Map<String, Object> bind(String authorizationHeader, VehicleBindRequest request);
 
-    Map<String, Object> update(String vehicleId, VehicleBindRequest request);
+    Map<String, Object> update(String authorizationHeader, String vehicleId, VehicleBindRequest request);
 
-    Map<String, Object> delete(String vehicleId);
+    Map<String, Object> delete(String authorizationHeader, String vehicleId);
 }
