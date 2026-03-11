@@ -1,0 +1,1983 @@
+openapi: 3.0.3
+info:
+  title: 停车场管理系统 API
+  version: 1.0.0
+  description: |
+    基于当前后端代码整理的 OpenAPI 3.0 文档，可直接导入 Apifox。
+
+    导入建议：
+    1. Apifox 选择“导入项目” -> “OpenAPI/Swagger”
+    2. 选择本文件 `docs/apifox/openapi.yaml`
+    3. 服务器地址默认使用 `http://localhost:8080`
+
+    说明：
+    - 除登录、注册接口外，用户相关接口需要 `Authorization: Bearer {token}`
+    - 管理员骨架接口当前 HTTP 状态仍为 `200`，但响应体 `code` 可能为 `202`
+    - 日期时间格式统一为 `yyyy-MM-dd HH:mm:ss`
+servers:
+  - url: http://localhost:8080
+    description: 本地开发环境
+tags:
+  - name: 认证
+    description: 登录、注册与当前登录人信息
+  - name: 用户车辆
+    description: 普通用户车辆绑定与管理
+  - name: 用户停车
+    description: 普通用户停车记录、当前停车与支付
+  - name: 管理员仪表盘
+    description: 管理员首页汇总
+  - name: 管理员停车
+    description: 管理员停车管理、出入场、减免
+  - name: 管理员车位
+    description: 管理员车位管理与收费规则
+paths:
+  /api/auth/admin/login:
+    post:
+      tags: [认证]
+      summary: 管理员登录
+      operationId: adminLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+            example:
+              username: admin
+              password: Admin123
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  token: admin-token-A1001-1773149190080
+                  role: ADMIN
+                  userId: A1001
+                  username: admin
+                  displayName: 系统管理员
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/auth/user/register:
+    post:
+      tags: [认证]
+      summary: 普通用户注册
+      operationId: userRegister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegisterRequest'
+            example:
+              username: zhangsan
+              password: User1234
+              phone: '13800138000'
+              realName: 张三
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponseEnvelope'
+              example:
+                code: 200
+                message: 注册成功
+                data:
+                  userId: U1001
+                  username: zhangsan
+                  realName: 张三
+                  phone: '13800138000'
+                  createTime: '2026-03-11 18:45:00'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/auth/user/login:
+    post:
+      tags: [认证]
+      summary: 普通用户登录
+      operationId: userLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLoginRequest'
+            example:
+              username: zhangsan
+              password: User1234
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  token: user-token-U1001-1773149190080
+                  role: USER
+                  userId: U1001
+                  username: zhangsan
+                  displayName: 张三
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/auth/profile:
+    get:
+      tags: [认证]
+      summary: 获取当前登录用户信息
+      operationId: profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseEnvelope'
+              examples:
+                admin:
+                  summary: 管理员
+                  value:
+                    code: 200
+                    message: success
+                    data:
+                      userId: A1001
+                      role: ADMIN
+                      username: admin
+                      displayName: 系统管理员
+                user:
+                  summary: 普通用户
+                  value:
+                    code: 200
+                    message: success
+                    data:
+                      userId: U1001
+                      role: USER
+                      username: zhangsan
+                      displayName: 张三
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/user/vehicles:
+    get:
+      tags: [用户车辆]
+      summary: 查询我的车辆
+      operationId: listUserVehicles
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleListResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  - vehicleId: V1001
+                    plateNumber: 粤B12345
+                    isPrimary: true
+                    bindTime: '2026-03-10 18:53:30'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [用户车辆]
+      summary: 绑定车辆
+      operationId: bindVehicle
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleBindRequest'
+            example:
+              plateNumber: 粤B12345
+              isPrimary: true
+      responses:
+        '200':
+          description: 绑定成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponseEnvelope'
+              example:
+                code: 200
+                message: 绑定成功
+                data:
+                  vehicleId: V1002
+                  plateNumber: 粤B12345
+                  isPrimary: true
+                  bindTime: '2026-03-11 18:45:00'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/user/vehicles/{vehicleId}:
+    put:
+      tags: [用户车辆]
+      summary: 修改车辆
+      operationId: updateVehicle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/VehicleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleBindRequest'
+            example:
+              plateNumber: 粤B88888
+              isPrimary: false
+      responses:
+        '200':
+          description: 修改成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleResponseEnvelope'
+              example:
+                code: 200
+                message: 修改成功
+                data:
+                  vehicleId: V1001
+                  plateNumber: 粤B88888
+                  isPrimary: false
+                  bindTime: '2026-03-10 18:53:30'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [用户车辆]
+      summary: 删除车辆
+      operationId: deleteVehicle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/VehicleId'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteVehicleResponseEnvelope'
+              example:
+                code: 200
+                message: 删除成功
+                data:
+                  vehicleId: V1001
+                  deleted: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/user/parking/current:
+    get:
+      tags: [用户停车]
+      summary: 查询当前停车信息
+      operationId: userCurrentParking
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCurrentParkingResponseEnvelope'
+              examples:
+                active:
+                  summary: 当前有在场车辆
+                  value:
+                    code: 200
+                    message: success
+                    data:
+                      recordId: R1002
+                      plateNumber: 粤B12345
+                      spaceCode: A-021
+                      entryTime: '2026-03-11 16:20:00'
+                      exitTime: ''
+                      durationMinutes: 153
+                      originalAmount: 15.00
+                      discountAmount: 0.00
+                      finalAmount: 15.00
+                      payStatus: UNPAID
+                      recordStatus: PARKING
+                      active: true
+                inactive:
+                  summary: 当前无在场车辆
+                  value:
+                    code: 200
+                    message: success
+                    data:
+                      active: false
+                      message: 当前没有在场车辆
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/user/parking/records:
+    get:
+      tags: [用户停车]
+      summary: 查询我的停车记录
+      operationId: userParkingRecords
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PlateNumber'
+        - $ref: '#/components/parameters/PageNum'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserParkingPageResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  total: 2
+                  pageNum: 1
+                  pageSize: 10
+                  records:
+                    - recordId: R1002
+                      plateNumber: 粤B12345
+                      spaceCode: A-021
+                      entryTime: '2026-03-11 16:20:00'
+                      exitTime: ''
+                      durationMinutes: 153
+                      originalAmount: 15.00
+                      discountAmount: 0.00
+                      finalAmount: 15.00
+                      payStatus: UNPAID
+                      recordStatus: PARKING
+                    - recordId: R1001
+                      plateNumber: 粤B12345
+                      spaceCode: A-019
+                      entryTime: '2026-03-10 09:30:00'
+                      exitTime: '2026-03-10 12:00:00'
+                      durationMinutes: 150
+                      originalAmount: 15.00
+                      discountAmount: 0.00
+                      finalAmount: 15.00
+                      payStatus: PAID
+                      recordStatus: COMPLETED
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/user/payments:
+    get:
+      tags: [用户停车]
+      summary: 查询我的支付记录
+      operationId: userPayments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageNum'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentPageResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  total: 1
+                  pageNum: 1
+                  pageSize: 10
+                  records:
+                    - paymentId: P1001
+                      recordId: R1001
+                      payAmount: 15.00
+                      payMethod: WECHAT
+                      payStatus: PAID
+                      payTime: '2026-03-10 12:00:00'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/user/payments/pay:
+    post:
+      tags: [用户停车]
+      summary: 模拟缴费
+      operationId: payParkingOrder
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParkingPaymentRequest'
+            example:
+              recordId: R1002
+              payMethod: WECHAT
+      responses:
+        '200':
+          description: 支付成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponseEnvelope'
+              example:
+                code: 200
+                message: 支付成功
+                data:
+                  paymentId: P1002
+                  recordId: R1002
+                  payAmount: 15.00
+                  payMethod: WECHAT
+                  payStatus: PAID
+                  payTime: '2026-03-11 18:45:00'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/dashboard/summary:
+    get:
+      tags: [管理员仪表盘]
+      summary: 查询仪表盘汇总
+      operationId: adminDashboardSummary
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  totalSpaces: 120
+                  freeSpaces: 48
+                  occupiedSpaces: 72
+                  todayEntryCount: 56
+                  todayExitCount: 43
+                  todayIncome: 1260.00
+                  note: 当前为骨架数据，后续接入 Redis 实时统计
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/parking/current:
+    get:
+      tags: [管理员停车]
+      summary: 查询当前在场车辆
+      operationId: adminCurrentParking
+      parameters:
+        - $ref: '#/components/parameters/PlateNumber'
+        - $ref: '#/components/parameters/PayStatus'
+        - $ref: '#/components/parameters/PageNum'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCurrentParkingPageResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  total: 1
+                  pageNum: 1
+                  pageSize: 10
+                  records:
+                    - recordId: R1002
+                      plateNumber: 粤B12345
+                      ownerName: 张三
+                      spaceCode: A-021
+                      entryTime: '2026-03-11 16:20:00'
+                      exitTime: ''
+                      durationMinutes: 153
+                      originalAmount: 15.00
+                      discountAmount: 0.00
+                      finalAmount: 15.00
+                      payStatus: UNPAID
+                      recordStatus: PARKING
+                      active: true
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/parking/entry:
+    post:
+      tags: [管理员停车]
+      summary: 手动录入车辆入场
+      operationId: adminParkingEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParkingEntryRequest'
+            example:
+              plateNumber: 粤B12345
+              spaceId: A-021
+              spaceType: NORMAL
+      responses:
+        '200':
+          description: 入场登记成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCurrentParkingResponseEnvelope'
+              example:
+                code: 200
+                message: 入场登记成功
+                data:
+                  recordId: R1003
+                  plateNumber: 粤B12345
+                  ownerName: 张三
+                  spaceCode: A-021
+                  entryTime: '2026-03-11 18:45:00'
+                  exitTime: ''
+                  durationMinutes: 0
+                  originalAmount: 0.00
+                  discountAmount: 0.00
+                  finalAmount: 0.00
+                  payStatus: UNPAID
+                  recordStatus: PARKING
+                  active: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/parking/exit:
+    post:
+      tags: [管理员停车]
+      summary: 办理车辆出场
+      operationId: adminParkingExit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParkingExitRequest'
+            example:
+              recordId: R1002
+      responses:
+        '200':
+          description: 出场办理成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminParkingRecordResponseEnvelope'
+              example:
+                code: 200
+                message: 出场办理成功
+                data:
+                  recordId: R1002
+                  plateNumber: 粤B12345
+                  ownerName: 张三
+                  spaceCode: A-021
+                  entryTime: '2026-03-11 16:20:00'
+                  exitTime: '2026-03-11 18:45:00'
+                  durationMinutes: 145
+                  originalAmount: 10.00
+                  discountAmount: 0.00
+                  finalAmount: 10.00
+                  payStatus: UNPAID
+                  recordStatus: COMPLETED
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/parking/records:
+    get:
+      tags: [管理员停车]
+      summary: 查询全部停车记录
+      operationId: adminParkingRecords
+      parameters:
+        - $ref: '#/components/parameters/PlateNumber'
+        - $ref: '#/components/parameters/RecordStatus'
+        - $ref: '#/components/parameters/PayStatus'
+        - $ref: '#/components/parameters/PageNum'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminParkingRecordPageResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  total: 2
+                  pageNum: 1
+                  pageSize: 10
+                  records:
+                    - recordId: R1002
+                      plateNumber: 粤B12345
+                      ownerName: 张三
+                      spaceCode: A-021
+                      entryTime: '2026-03-11 16:20:00'
+                      exitTime: ''
+                      durationMinutes: 153
+                      originalAmount: 15.00
+                      discountAmount: 0.00
+                      finalAmount: 15.00
+                      payStatus: UNPAID
+                      recordStatus: PARKING
+                    - recordId: R1001
+                      plateNumber: 粤B12345
+                      ownerName: 张三
+                      spaceCode: A-019
+                      entryTime: '2026-03-10 09:30:00'
+                      exitTime: '2026-03-10 12:00:00'
+                      durationMinutes: 150
+                      originalAmount: 15.00
+                      discountAmount: 0.00
+                      finalAmount: 15.00
+                      payStatus: PAID
+                      recordStatus: COMPLETED
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/parking/exempt:
+    post:
+      tags: [管理员停车]
+      summary: 办理费用减免
+      operationId: adminParkingExempt
+      description: 当前为接口骨架，HTTP 状态码仍为 200，但响应体 `code=202`。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParkingExemptionRequest'
+            example:
+              recordId: R1002
+              exemptionType: FULL
+              exemptionAmount: 15.00
+              reason: 内部车辆免单
+      responses:
+        '200':
+          description: 骨架响应
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExemptionTodoResponseEnvelope'
+              example:
+                code: 202
+                message: 已创建接口骨架，等待接入 Redis
+                data:
+                  recordId: R1002
+                  exemptionType: FULL
+                  exemptionAmount: 15.00
+                  reason: 内部车辆免单
+                  finalAmount: 0.00
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/parking/exempt/{recordId}:
+    get:
+      tags: [管理员停车]
+      summary: 查询减免详情
+      operationId: adminExemptionDetail
+      parameters:
+        - $ref: '#/components/parameters/RecordId'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExemptionDetailResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  recordId: R1002
+                  exemptionType: FULL
+                  exemptionAmount: 15.00
+                  reason: 内部车辆免单
+                  operatorId: A1001
+                  operateTime: '2026-03-10 20:20:00'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/spaces:
+    get:
+      tags: [管理员车位]
+      summary: 查询车位列表
+      operationId: adminSpaces
+      parameters:
+        - $ref: '#/components/parameters/SpaceStatus'
+        - $ref: '#/components/parameters/SpaceType'
+        - $ref: '#/components/parameters/PageNum'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpacePageResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  total: 2
+                  pageNum: 1
+                  pageSize: 10
+                  records:
+                    - spaceId: S1001
+                      spaceCode: A-019
+                      type: NORMAL
+                      status: FREE
+                      floor: B1
+                      remark: 普通车位
+                    - spaceId: S1002
+                      spaceCode: B-001
+                      type: NEW_ENERGY
+                      status: OCCUPIED
+                      floor: B1
+                      remark: 新能源车位
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [管理员车位]
+      summary: 创建车位
+      operationId: createSpace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParkingSpaceSaveRequest'
+            example:
+              spaceCode: A-025
+              type: NORMAL
+              floor: B1
+              remark: 普通车位
+      responses:
+        '200':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceResponseEnvelope'
+              example:
+                code: 200
+                message: 车位创建成功
+                data:
+                  spaceId: S1003
+                  spaceCode: A-025
+                  type: NORMAL
+                  status: FREE
+                  floor: B1
+                  remark: 普通车位
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/spaces/{spaceId}:
+    put:
+      tags: [管理员车位]
+      summary: 更新车位
+      operationId: updateSpace
+      parameters:
+        - $ref: '#/components/parameters/SpaceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ParkingSpaceSaveRequest'
+            example:
+              spaceCode: A-025
+              type: VIP
+              floor: B1
+              remark: 贵宾专用
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceResponseEnvelope'
+              example:
+                code: 200
+                message: 车位更新成功
+                data:
+                  spaceId: S1003
+                  spaceCode: A-025
+                  type: VIP
+                  status: FREE
+                  floor: B1
+                  remark: 贵宾专用
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [管理员车位]
+      summary: 删除车位
+      operationId: deleteSpace
+      parameters:
+        - $ref: '#/components/parameters/SpaceId'
+      responses:
+        '200':
+          description: 删除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteSpaceResponseEnvelope'
+              example:
+                code: 200
+                message: 车位删除成功
+                data:
+                  spaceId: S1003
+                  deleted: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/admin/fee-rule:
+    get:
+      tags: [管理员车位]
+      summary: 查询收费规则
+      operationId: feeRule
+      responses:
+        '200':
+          description: 查询成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeRuleResponseEnvelope'
+              example:
+                code: 200
+                message: success
+                data:
+                  freeMinutes: 30
+                  pricePerHour: 5.00
+                  dailyMaxAmount: 30.00
+        '500':
+          $ref: '#/components/responses/ServerError'
+    put:
+      tags: [管理员车位]
+      summary: 更新收费规则
+      operationId: updateFeeRule
+      description: 当前为接口骨架，HTTP 状态码仍为 200，但响应体 `code=202`。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FeeRuleUpdateRequest'
+            example:
+              freeMinutes: 30
+              pricePerHour: 5.00
+              dailyMaxAmount: 30.00
+      responses:
+        '200':
+          description: 骨架响应
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeeRuleTodoResponseEnvelope'
+              example:
+                code: 202
+                message: 已创建接口骨架，等待接入 Redis
+                data:
+                  freeMinutes: 30
+                  pricePerHour: 5.00
+                  dailyMaxAmount: 30.00
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    VehicleId:
+      name: vehicleId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: V1001
+    RecordId:
+      name: recordId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: R1002
+    SpaceId:
+      name: spaceId
+      in: path
+      required: true
+      schema:
+        type: string
+      example: S1001
+    PlateNumber:
+      name: plateNumber
+      in: query
+      required: false
+      schema:
+        type: string
+        default: ''
+      example: 粤B12345
+    PageNum:
+      name: pageNum
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      example: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 10
+      example: 10
+    PayStatus:
+      name: payStatus
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [UNPAID, PAID, EXEMPTED]
+        default: ''
+      example: UNPAID
+    RecordStatus:
+      name: recordStatus
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [PARKING, COMPLETED]
+        default: ''
+      example: PARKING
+    SpaceStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [FREE, OCCUPIED]
+        default: ''
+      example: FREE
+    SpaceType:
+      name: type
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [NORMAL, NEW_ENERGY, VIP]
+        default: ''
+      example: NORMAL
+
+  responses:
+    BadRequest:
+      description: 请求参数错误或业务校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            invalid:
+              value:
+                code: 400
+                message: 参数校验失败
+                data: null
+            business:
+              value:
+                code: 400
+                message: 停车记录不存在
+                data: null
+    Conflict:
+      description: 业务冲突
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 409
+            message: 该订单已支付
+            data: null
+    ServerError:
+      description: 系统异常
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: 500
+            message: 系统异常：No static resource .
+            data: null
+
+  schemas:
+    ApiResponseMeta:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          example: success
+
+    ErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              nullable: true
+              example: null
+
+    AdminLoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          example: admin
+        password:
+          type: string
+          minLength: 1
+          example: Admin123
+
+    UserLoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          example: zhangsan
+        password:
+          type: string
+          minLength: 1
+          example: User1234
+
+    UserRegisterRequest:
+      type: object
+      required: [username, password, phone, realName]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          example: zhangsan
+        password:
+          type: string
+          minLength: 1
+          example: User1234
+        phone:
+          type: string
+          pattern: '^1\d{10}$'
+          example: '13800138000'
+        realName:
+          type: string
+          minLength: 1
+          example: 张三
+
+    VehicleBindRequest:
+      type: object
+      required: [plateNumber, isPrimary]
+      properties:
+        plateNumber:
+          type: string
+          minLength: 1
+          example: 粤B12345
+        isPrimary:
+          type: boolean
+          example: true
+
+    ParkingPaymentRequest:
+      type: object
+      required: [recordId, payMethod]
+      properties:
+        recordId:
+          type: string
+          minLength: 1
+          example: R1002
+        payMethod:
+          type: string
+          enum: [WECHAT, ALIPAY, CASH]
+          example: WECHAT
+
+    ParkingEntryRequest:
+      type: object
+      required: [plateNumber]
+      properties:
+        plateNumber:
+          type: string
+          minLength: 1
+          example: 粤B12345
+        spaceId:
+          type: string
+          description: 实际作为车位编号传入，如 `A-021`
+          example: A-021
+        spaceType:
+          type: string
+          enum: [NORMAL, NEW_ENERGY, VIP]
+          example: NORMAL
+
+    ParkingExitRequest:
+      type: object
+      required: [recordId]
+      properties:
+        recordId:
+          type: string
+          minLength: 1
+          example: R1002
+
+    ParkingExemptionRequest:
+      type: object
+      required: [recordId, exemptionType, exemptionAmount, reason]
+      properties:
+        recordId:
+          type: string
+          minLength: 1
+          example: R1002
+        exemptionType:
+          type: string
+          enum: [FULL, PARTIAL]
+          example: FULL
+        exemptionAmount:
+          type: number
+          format: double
+          example: 15.00
+        reason:
+          type: string
+          minLength: 1
+          example: 内部车辆免单
+
+    ParkingSpaceSaveRequest:
+      type: object
+      required: [spaceCode, type, floor]
+      properties:
+        spaceCode:
+          type: string
+          minLength: 1
+          example: A-025
+        type:
+          type: string
+          enum: [NORMAL, NEW_ENERGY, VIP]
+          example: NORMAL
+        floor:
+          type: string
+          minLength: 1
+          example: B1
+        remark:
+          type: string
+          example: 普通车位
+
+    FeeRuleUpdateRequest:
+      type: object
+      required: [freeMinutes, pricePerHour, dailyMaxAmount]
+      properties:
+        freeMinutes:
+          type: integer
+          minimum: 0
+          example: 30
+        pricePerHour:
+          type: number
+          format: double
+          example: 5.00
+        dailyMaxAmount:
+          type: number
+          format: double
+          example: 30.00
+
+    LoginResponseData:
+      type: object
+      required: [token, role, userId, username, displayName]
+      properties:
+        token:
+          type: string
+          example: user-token-U1001-1773149190080
+        role:
+          type: string
+          enum: [ADMIN, USER]
+          example: USER
+        userId:
+          type: string
+          example: U1001
+        username:
+          type: string
+          example: zhangsan
+        displayName:
+          type: string
+          example: 张三
+
+    RegisterData:
+      type: object
+      required: [userId, username, realName, phone, createTime]
+      properties:
+        userId:
+          type: string
+          example: U1001
+        username:
+          type: string
+          example: zhangsan
+        realName:
+          type: string
+          example: 张三
+        phone:
+          type: string
+          example: '13800138000'
+        createTime:
+          type: string
+          example: '2026-03-11 18:45:00'
+
+    ProfileData:
+      type: object
+      required: [userId, role, username, displayName]
+      properties:
+        userId:
+          type: string
+          example: U1001
+        role:
+          type: string
+          enum: [ADMIN, USER]
+          example: USER
+        username:
+          type: string
+          example: zhangsan
+        displayName:
+          type: string
+          example: 张三
+
+    Vehicle:
+      type: object
+      required: [vehicleId, plateNumber, isPrimary, bindTime]
+      properties:
+        vehicleId:
+          type: string
+          example: V1001
+        plateNumber:
+          type: string
+          example: 粤B12345
+        isPrimary:
+          type: boolean
+          example: true
+        bindTime:
+          type: string
+          example: '2026-03-10 18:53:30'
+
+    DeleteVehicleData:
+      type: object
+      required: [vehicleId, deleted]
+      properties:
+        vehicleId:
+          type: string
+          example: V1001
+        deleted:
+          type: boolean
+          example: true
+
+    DeleteSpaceData:
+      type: object
+      required: [spaceId, deleted]
+      properties:
+        spaceId:
+          type: string
+          example: S1001
+        deleted:
+          type: boolean
+          example: true
+
+    UserCurrentParkingData:
+      type: object
+      properties:
+        recordId:
+          type: string
+          example: R1002
+        plateNumber:
+          type: string
+          example: 粤B12345
+        spaceCode:
+          type: string
+          example: A-021
+        entryTime:
+          type: string
+          example: '2026-03-11 16:20:00'
+        exitTime:
+          type: string
+          example: ''
+        durationMinutes:
+          type: integer
+          example: 153
+        originalAmount:
+          type: number
+          format: double
+          example: 15.00
+        discountAmount:
+          type: number
+          format: double
+          example: 0.00
+        finalAmount:
+          type: number
+          format: double
+          example: 15.00
+        payStatus:
+          type: string
+          enum: [UNPAID, PAID, EXEMPTED]
+          example: UNPAID
+        recordStatus:
+          type: string
+          enum: [PARKING, COMPLETED]
+          example: PARKING
+        active:
+          type: boolean
+          example: true
+        message:
+          type: string
+          description: 当前无在场车辆时返回
+          example: 当前没有在场车辆
+
+    UserParkingRecord:
+      type: object
+      required:
+        [recordId, plateNumber, spaceCode, entryTime, exitTime, durationMinutes, originalAmount, discountAmount, finalAmount, payStatus, recordStatus]
+      properties:
+        recordId:
+          type: string
+          example: R1002
+        plateNumber:
+          type: string
+          example: 粤B12345
+        spaceCode:
+          type: string
+          example: A-021
+        entryTime:
+          type: string
+          example: '2026-03-11 16:20:00'
+        exitTime:
+          type: string
+          example: ''
+        durationMinutes:
+          type: integer
+          example: 153
+        originalAmount:
+          type: number
+          format: double
+          example: 15.00
+        discountAmount:
+          type: number
+          format: double
+          example: 0.00
+        finalAmount:
+          type: number
+          format: double
+          example: 15.00
+        payStatus:
+          type: string
+          enum: [UNPAID, PAID, EXEMPTED]
+          example: UNPAID
+        recordStatus:
+          type: string
+          enum: [PARKING, COMPLETED]
+          example: PARKING
+
+    PaymentRecord:
+      type: object
+      required: [paymentId, recordId, payAmount, payMethod, payStatus, payTime]
+      properties:
+        paymentId:
+          type: string
+          example: P1001
+        recordId:
+          type: string
+          example: R1001
+        payAmount:
+          type: number
+          format: double
+          example: 15.00
+        payMethod:
+          type: string
+          enum: [WECHAT, ALIPAY, CASH]
+          example: WECHAT
+        payStatus:
+          type: string
+          enum: [PAID]
+          example: PAID
+        payTime:
+          type: string
+          example: '2026-03-10 12:00:00'
+
+    AdminCurrentParkingRecord:
+      type: object
+      required:
+        [recordId, plateNumber, ownerName, spaceCode, entryTime, exitTime, durationMinutes, originalAmount, discountAmount, finalAmount, payStatus, recordStatus, active]
+      properties:
+        recordId:
+          type: string
+          example: R1002
+        plateNumber:
+          type: string
+          example: 粤B12345
+        ownerName:
+          type: string
+          example: 张三
+        spaceCode:
+          type: string
+          example: A-021
+        entryTime:
+          type: string
+          example: '2026-03-11 16:20:00'
+        exitTime:
+          type: string
+          example: ''
+        durationMinutes:
+          type: integer
+          example: 153
+        originalAmount:
+          type: number
+          format: double
+          example: 15.00
+        discountAmount:
+          type: number
+          format: double
+          example: 0.00
+        finalAmount:
+          type: number
+          format: double
+          example: 15.00
+        payStatus:
+          type: string
+          enum: [UNPAID, PAID, EXEMPTED]
+          example: UNPAID
+        recordStatus:
+          type: string
+          enum: [PARKING, COMPLETED]
+          example: PARKING
+        active:
+          type: boolean
+          example: true
+
+    AdminParkingRecord:
+      type: object
+      required:
+        [recordId, plateNumber, ownerName, spaceCode, entryTime, exitTime, durationMinutes, originalAmount, discountAmount, finalAmount, payStatus, recordStatus]
+      properties:
+        recordId:
+          type: string
+          example: R1002
+        plateNumber:
+          type: string
+          example: 粤B12345
+        ownerName:
+          type: string
+          example: 张三
+        spaceCode:
+          type: string
+          example: A-021
+        entryTime:
+          type: string
+          example: '2026-03-11 16:20:00'
+        exitTime:
+          type: string
+          example: ''
+        durationMinutes:
+          type: integer
+          example: 153
+        originalAmount:
+          type: number
+          format: double
+          example: 15.00
+        discountAmount:
+          type: number
+          format: double
+          example: 0.00
+        finalAmount:
+          type: number
+          format: double
+          example: 15.00
+        payStatus:
+          type: string
+          enum: [UNPAID, PAID, EXEMPTED]
+          example: UNPAID
+        recordStatus:
+          type: string
+          enum: [PARKING, COMPLETED]
+          example: PARKING
+
+    DashboardSummary:
+      type: object
+      required: [totalSpaces, freeSpaces, occupiedSpaces, todayEntryCount, todayExitCount, todayIncome, note]
+      properties:
+        totalSpaces:
+          type: integer
+          example: 120
+        freeSpaces:
+          type: integer
+          example: 48
+        occupiedSpaces:
+          type: integer
+          example: 72
+        todayEntryCount:
+          type: integer
+          example: 56
+        todayExitCount:
+          type: integer
+          example: 43
+        todayIncome:
+          type: number
+          format: double
+          example: 1260.00
+        note:
+          type: string
+          example: 当前为骨架数据，后续接入 Redis 实时统计
+
+    ExemptionPreview:
+      type: object
+      required: [recordId, exemptionType, exemptionAmount, reason, finalAmount]
+      properties:
+        recordId:
+          type: string
+          example: R1002
+        exemptionType:
+          type: string
+          enum: [FULL, PARTIAL]
+          example: FULL
+        exemptionAmount:
+          type: number
+          format: double
+          example: 15.00
+        reason:
+          type: string
+          example: 内部车辆免单
+        finalAmount:
+          type: number
+          format: double
+          example: 0.00
+
+    ExemptionDetail:
+      type: object
+      required: [recordId, exemptionType, exemptionAmount, reason, operatorId, operateTime]
+      properties:
+        recordId:
+          type: string
+          example: R1002
+        exemptionType:
+          type: string
+          enum: [FULL, PARTIAL]
+          example: FULL
+        exemptionAmount:
+          type: number
+          format: double
+          example: 15.00
+        reason:
+          type: string
+          example: 内部车辆免单
+        operatorId:
+          type: string
+          example: A1001
+        operateTime:
+          type: string
+          example: '2026-03-10 20:20:00'
+
+    Space:
+      type: object
+      required: [spaceId, spaceCode, type, status, floor, remark]
+      properties:
+        spaceId:
+          type: string
+          example: S1001
+        spaceCode:
+          type: string
+          example: A-019
+        type:
+          type: string
+          enum: [NORMAL, NEW_ENERGY, VIP]
+          example: NORMAL
+        status:
+          type: string
+          enum: [FREE, OCCUPIED]
+          example: FREE
+        floor:
+          type: string
+          example: B1
+        remark:
+          type: string
+          example: 普通车位
+
+    FeeRule:
+      type: object
+      required: [freeMinutes, pricePerHour, dailyMaxAmount]
+      properties:
+        freeMinutes:
+          type: integer
+          example: 30
+        pricePerHour:
+          type: number
+          format: double
+          example: 5.00
+        dailyMaxAmount:
+          type: number
+          format: double
+          example: 30.00
+
+    UserParkingPage:
+      type: object
+      required: [total, pageNum, pageSize, records]
+      properties:
+        total:
+          type: integer
+          example: 2
+        pageNum:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserParkingRecord'
+
+    PaymentPage:
+      type: object
+      required: [total, pageNum, pageSize, records]
+      properties:
+        total:
+          type: integer
+          example: 1
+        pageNum:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentRecord'
+
+    AdminCurrentParkingPage:
+      type: object
+      required: [total, pageNum, pageSize, records]
+      properties:
+        total:
+          type: integer
+          example: 1
+        pageNum:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminCurrentParkingRecord'
+
+    AdminParkingRecordPage:
+      type: object
+      required: [total, pageNum, pageSize, records]
+      properties:
+        total:
+          type: integer
+          example: 2
+        pageNum:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminParkingRecord'
+
+    SpacePage:
+      type: object
+      required: [total, pageNum, pageSize, records]
+      properties:
+        total:
+          type: integer
+          example: 14
+        pageNum:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+        records:
+          type: array
+          items:
+            $ref: '#/components/schemas/Space'
+
+    LoginResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/LoginResponseData'
+
+    RegisterResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/RegisterData'
+
+    ProfileResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/ProfileData'
+
+    VehicleListResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Vehicle'
+
+    VehicleResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/Vehicle'
+
+    DeleteVehicleResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/DeleteVehicleData'
+
+    UserCurrentParkingResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/UserCurrentParkingData'
+
+    UserParkingPageResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/UserParkingPage'
+
+    PaymentPageResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/PaymentPage'
+
+    PaymentResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/PaymentRecord'
+
+    DashboardSummaryResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/DashboardSummary'
+
+    AdminCurrentParkingPageResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/AdminCurrentParkingPage'
+
+    AdminCurrentParkingResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/AdminCurrentParkingRecord'
+
+    AdminParkingRecordResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/AdminParkingRecord'
+
+    AdminParkingRecordPageResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/AdminParkingRecordPage'
+
+    ExemptionTodoResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/ExemptionPreview'
+
+    ExemptionDetailResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/ExemptionDetail'
+
+    SpacePageResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/SpacePage'
+
+    SpaceResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/Space'
+
+    DeleteSpaceResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/DeleteSpaceData'
+
+    FeeRuleResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/FeeRule'
+
+    FeeRuleTodoResponseEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseMeta'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              $ref: '#/components/schemas/FeeRule'

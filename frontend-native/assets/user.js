@@ -10,7 +10,7 @@ import {
   showMessage,
   statusPill,
   payStatusLabel
-} from './common.js';
+} from './common.js?v=20260311-3';
 
 const session = requireRole('USER');
 if (!session) {

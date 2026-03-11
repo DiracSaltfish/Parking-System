@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://localhost:8080/api';
+export const API_BASE_URL = '/api';
 const STORAGE_KEY = 'parking-native-session';
 
 export const usernamePattern = /^[a-zA-Z0-9_]{4,16}$/;

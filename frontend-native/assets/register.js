@@ -5,7 +5,7 @@ import {
   request,
   showMessage,
   usernamePattern
-} from './common.js';
+} from './common.js?v=20260311-3';
 
 const form = document.getElementById('registerForm');
 const messageBox = document.getElementById('messageBox');

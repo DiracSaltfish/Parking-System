@@ -1,31 +1,41 @@
 # 停车场管理系统
 
-基于 `Vue 3 + Spring Boot + Redis` 的前后端分离课程实训项目。
+基于 `HTML + CSS + JavaScript + Spring Boot + Redis` 的前后端分离课程实训项目。
 
-当前仓库已经包含：
+说明：
 
-- `frontend/`：Vue 3 + Element Plus 前端
+- 当前课程汇报主版本前端为原生 `HTML + CSS + JavaScript`
+- 仓库中保留了一套 `Vue 3 + Element Plus` 版本，不作为当前课程要求的主交付版本
+
+## 仓库结构
+
+- `frontend-native/`：原生前端版本
+- `frontend/`：保留的 Vue 版本
 - `backend/`：Spring Boot 后端
-- `docs/`：总体设计、功能设计、接口文档、Redis 设计、汇报提纲
+- `docs/`：设计文档、接口文档、汇报提纲
 - `docker-compose.redis.yml`：Redis 容器启动文件
 
 ## 当前实现状态
 
 ### 已完成
 
+- 原生前端版本落地
 - 统一登录页
   - 账号为 `admin` 时进入管理员端
   - 其他账号进入普通用户端
 - 管理员登录
 - 普通用户注册 / 登录
 - Token 会话校验
-- 用户绑定车牌、修改车牌、删除车牌
+- 用户绑定车牌、删除车牌
 - 用户查询当前停车信息
 - 用户查询停车记录
 - 用户查询缴费记录
 - 用户模拟缴费
 - 管理员查看当前在场车辆
+- 管理员查看历史停车记录
 - 管理员手动录入车辆入场
+- 管理员办理车辆出场
+- 管理员车位管理与占用状态同步
 - Redis 本机运行与仓储接入
 - Redis 种子数据初始化
 - 前端输入合法性校验
@@ -33,22 +43,20 @@
 ### 当前为骨架 / 演示数据
 
 - 管理员仪表盘统计
-- 车位管理
 - 收费规则设置
 - 停车费用豁免详情与管理
-- 管理员办理出场
 
 ### 下一步建议
 
-- 完成管理员办理出场
 - 完成费用豁免真实流程
 - 将管理员仪表盘接入 Redis 实时统计
-- 将车位管理与收费规则改为真实持久化
+- 将收费规则改为真实持久化
 - 将密码存储改为 `BCrypt`
 
 ## 当前技术栈
 
-- 前端：`Vue 3 + Vite + Element Plus + Pinia + Vue Router`
+- 前端主版本：`HTML + CSS + JavaScript`
+- 前端保留版本：`Vue 3 + Vite + Element Plus + Pinia + Vue Router`
 - 后端：`Spring Boot 3 + Java 17`
 - 数据存储：`Redis`
 - 接口风格：`RESTful API`
@@ -98,7 +106,18 @@ mvn spring-boot:run
 
 - [http://localhost:8080](http://localhost:8080)
 
-### 3. 启动前端
+### 3. 启动原生前端
+
+```bash
+cd frontend-native
+python3 -m http.server 5501
+```
+
+原生前端地址：
+
+- [http://localhost:5501/index.html](http://localhost:5501/index.html)
+
+### 4. 启动 Vue 前端（保留版本）
 
 ```bash
 cd frontend
@@ -106,7 +125,7 @@ npm install
 npm run dev
 ```
 
-前端默认地址：
+Vue 前端默认地址：
 
 - [http://localhost:5173](http://localhost:5173)
 

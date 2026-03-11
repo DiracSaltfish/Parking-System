@@ -1,7 +1,10 @@
 import axios from 'axios'
 
+const apiProtocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
+const apiHost = window.location.hostname || 'localhost'
+
 const http = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: `${apiProtocol}//${apiHost}:8080/api`,
   timeout: 5000
 })
 

@@ -14,7 +14,7 @@ import {
   typeLabel,
   payStatusLabel,
   recordStatusLabel
-} from './common.js';
+} from './common.js?v=20260311-3';
 
 const session = requireRole('ADMIN');
 if (!session) {

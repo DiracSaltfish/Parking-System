@@ -14,16 +14,22 @@
 
 ## 运行方式
 
-建议使用本地静态服务器打开，不要直接双击 `html` 文件。
+建议使用仓库内的本地代理服务打开，不要直接双击 `html` 文件。
 
 ```bash
 cd frontend-native
-python3 -m http.server 5501
+node server.mjs
 ```
 
 打开：
 
 - [http://localhost:5501/index.html](http://localhost:5501/index.html)
+
+说明：
+
+- 该服务会同时提供静态页面
+- 并将 `/api/*` 自动转发到本机后端 `http://127.0.0.1:8080`
+- 这样手机、平板、WireGuard 访问时只需要连一个端口 `5501`
 
 ## 页面说明
 
