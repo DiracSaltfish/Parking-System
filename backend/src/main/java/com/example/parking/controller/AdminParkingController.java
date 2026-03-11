@@ -42,7 +42,7 @@ public class AdminParkingController {
 
     @PostMapping("/exit")
     public ApiResponse<Map<String, Object>> exit(@Valid @RequestBody ParkingExitRequest request) {
-        return ApiResponse.todo("已创建接口骨架，等待接入 Redis", adminParkingService.exit(request));
+        return ApiResponse.success("出场办理成功", adminParkingService.exit(request));
     }
 
     @GetMapping("/records")

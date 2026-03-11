@@ -21,6 +21,7 @@ public class RedisDataStore {
     private static final String SEQ_VEHICLE = "seq:vehicle";
     private static final String SEQ_RECORD = "seq:record";
     private static final String SEQ_PAYMENT = "seq:payment";
+    private static final String SEQ_SPACE = "seq:space";
 
     private static final String ADMIN_ID = "A1001";
     private static final String ADMIN_USERNAME = "admin";
@@ -36,7 +37,10 @@ public class RedisDataStore {
 
     @PostConstruct
     public void init() {
+        seedSpacesIfAbsent();
         seedBaseDataIfAbsent();
+        repairLegacyCurrentParkingSpaces();
+        syncSpaceStatusWithCurrentRecords();
     }
 
     public Map<String, Object> findAdminByUsername(String username) {
@@ -297,7 +301,7 @@ public class RedisDataStore {
         return records;
     }
 
-    public Map<String, Object> createParkingEntry(String plateNumber, String spaceCode) {
+    public Map<String, Object> createParkingEntry(String plateNumber, String spaceCode, String spaceType) {
         String normalizedPlate = plateNumber == null ? "" : plateNumber.trim().toUpperCase();
         if (normalizedPlate.isBlank()) {
             throw new IllegalArgumentException("车牌号不能为空");
@@ -317,17 +321,116 @@ public class RedisDataStore {
 
         String recordId = nextId("R", SEQ_RECORD);
         String normalizedSpaceCode = spaceCode == null ? "" : spaceCode.trim().toUpperCase();
+        String normalizedSpaceType = normalizeSpaceType(spaceType);
+        String assignedSpaceCode = resolveEntrySpaceCode(normalizedSpaceCode, normalizedSpaceType);
         return createParkingRecord(
                 recordId,
                 userId,
                 vehicleId,
                 normalizedPlate,
-                normalizedSpaceCode.isBlank() ? "AUTO-" + recordId.substring(1) : normalizedSpaceCode,
+                assignedSpaceCode,
                 LocalDateTime.now(),
                 null,
                 "PARKING",
                 "UNPAID"
         );
+    }
+
+    public Map<String, Object> completeParkingExit(String recordId) {
+        Map<String, Object> record = getParkingRecord(recordId);
+        if (record == null) {
+            throw new IllegalArgumentException("停车记录不存在");
+        }
+        if ("COMPLETED".equals(record.get("recordStatus"))) {
+            return record;
+        }
+
+        LocalDateTime exitTime = LocalDateTime.now();
+        redisTemplate.opsForHash().put(parkingRecordKey(recordId), "exitTime", DateTimeUtils.format(exitTime));
+        redisTemplate.opsForHash().put(parkingRecordKey(recordId), "recordStatus", "COMPLETED");
+        redisTemplate.delete(currentRecordPlateKey(String.valueOf(record.get("plateNumber"))));
+        updateSpaceOccupancy(String.valueOf(record.get("spaceCode")), "FREE");
+        return getParkingRecord(recordId);
+    }
+
+    public List<Map<String, Object>> listSpaces() {
+        Set<String> spaceIds = redisTemplate.opsForSet().members(spaceAllKey());
+        List<Map<String, Object>> spaces = new ArrayList<>();
+        if (spaceIds != null) {
+            for (String spaceId : spaceIds) {
+                Map<String, Object> space = getSpace(spaceId);
+                if (space != null) {
+                    spaces.add(space);
+                }
+            }
+        }
+        spaces.sort(Comparator.comparing((Map<String, Object> item) -> String.valueOf(item.get("spaceCode"))));
+        return spaces;
+    }
+
+    public Map<String, Object> createSpace(String spaceCode, String type, String floor, String remark) {
+        String normalizedSpaceCode = normalizeSpaceCode(spaceCode);
+        if (normalizedSpaceCode.isBlank()) {
+            throw new IllegalArgumentException("车位编号不能为空");
+        }
+        if (redisTemplate.opsForValue().get(spaceCodeKey(normalizedSpaceCode)) != null) {
+            throw new IllegalArgumentException("车位编号已存在");
+        }
+
+        String spaceId = nextId("S", SEQ_SPACE);
+        Map<String, String> space = new LinkedHashMap<>();
+        space.put("spaceId", spaceId);
+        space.put("spaceCode", normalizedSpaceCode);
+        space.put("type", normalizeSpaceType(type));
+        space.put("status", "FREE");
+        space.put("floor", floor == null || floor.isBlank() ? "B1" : floor.trim().toUpperCase());
+        space.put("remark", remark == null ? "" : remark.trim());
+        redisTemplate.opsForHash().putAll(spaceKey(spaceId), space);
+        redisTemplate.opsForSet().add(spaceAllKey(), spaceId);
+        redisTemplate.opsForValue().set(spaceCodeKey(normalizedSpaceCode), spaceId);
+        return toSpaceMap(space);
+    }
+
+    public Map<String, Object> updateSpace(String spaceId, String spaceCode, String type, String floor, String remark) {
+        Map<String, Object> space = getSpace(spaceId);
+        if (space == null) {
+            throw new IllegalArgumentException("车位不存在");
+        }
+
+        String normalizedSpaceCode = normalizeSpaceCode(spaceCode);
+        String currentSpaceCode = String.valueOf(space.get("spaceCode"));
+        String existingSpaceId = redisTemplate.opsForValue().get(spaceCodeKey(normalizedSpaceCode));
+        if (existingSpaceId != null && !existingSpaceId.equals(spaceId)) {
+            throw new IllegalArgumentException("车位编号已存在");
+        }
+        if ("OCCUPIED".equals(space.get("status")) && !currentSpaceCode.equals(normalizedSpaceCode)) {
+            throw new IllegalStateException("占用中的车位不能修改编号");
+        }
+
+        if (!currentSpaceCode.equals(normalizedSpaceCode)) {
+            redisTemplate.delete(spaceCodeKey(currentSpaceCode));
+            redisTemplate.opsForValue().set(spaceCodeKey(normalizedSpaceCode), spaceId);
+        }
+
+        redisTemplate.opsForHash().put(spaceKey(spaceId), "spaceCode", normalizedSpaceCode);
+        redisTemplate.opsForHash().put(spaceKey(spaceId), "type", normalizeSpaceType(type));
+        redisTemplate.opsForHash().put(spaceKey(spaceId), "floor", floor == null || floor.isBlank() ? "B1" : floor.trim().toUpperCase());
+        redisTemplate.opsForHash().put(spaceKey(spaceId), "remark", remark == null ? "" : remark.trim());
+        return getSpace(spaceId);
+    }
+
+    public Map<String, Object> deleteSpace(String spaceId) {
+        Map<String, Object> space = getSpace(spaceId);
+        if (space == null) {
+            throw new IllegalArgumentException("车位不存在");
+        }
+        if ("OCCUPIED".equals(space.get("status"))) {
+            throw new IllegalStateException("占用中的车位不能删除");
+        }
+        redisTemplate.delete(spaceKey(spaceId));
+        redisTemplate.opsForSet().remove(spaceAllKey(), spaceId);
+        redisTemplate.delete(spaceCodeKey(String.valueOf(space.get("spaceCode"))));
+        return Map.of("spaceId", spaceId, "deleted", true);
     }
 
     private void seedBaseDataIfAbsent() {
@@ -388,6 +491,7 @@ public class RedisDataStore {
         }
         if ("PARKING".equals(recordStatus)) {
             redisTemplate.opsForValue().set(currentRecordPlateKey(plateNumber), recordId);
+            updateSpaceOccupancy(spaceCode, "OCCUPIED");
         }
         return toParkingRecordMap(record);
     }
@@ -442,6 +546,19 @@ public class RedisDataStore {
             return null;
         }
         return toPaymentMap(payment);
+    }
+
+    private Map<String, Object> getSpace(String spaceId) {
+        Map<Object, Object> space = redisTemplate.opsForHash().entries(spaceKey(spaceId));
+        if (space.isEmpty()) {
+            return null;
+        }
+        return toSpaceMap(space);
+    }
+
+    private Map<String, Object> getSpaceByCode(String spaceCode) {
+        String spaceId = redisTemplate.opsForValue().get(spaceCodeKey(normalizeSpaceCode(spaceCode)));
+        return spaceId == null ? null : getSpace(spaceId);
     }
 
     private Map<String, Object> toUserMap(Map<?, ?> source) {
@@ -499,6 +616,17 @@ public class RedisDataStore {
         return result;
     }
 
+    private Map<String, Object> toSpaceMap(Map<?, ?> source) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("spaceId", value(source, "spaceId"));
+        result.put("spaceCode", value(source, "spaceCode"));
+        result.put("type", value(source, "type"));
+        result.put("status", value(source, "status"));
+        result.put("floor", value(source, "floor"));
+        result.put("remark", value(source, "remark"));
+        return result;
+    }
+
     private String nextId(String prefix, String sequenceKey) {
         Long number = redisTemplate.opsForValue().increment(sequenceKey);
         if (number == null) {
@@ -513,6 +641,136 @@ public class RedisDataStore {
 
     private String emptyToNull(String value) {
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private void seedSpacesIfAbsent() {
+        if (Boolean.TRUE.equals(redisTemplate.hasKey(spaceAllKey()))) {
+            return;
+        }
+
+        createSeedSpace("A-019", "NORMAL", "B1", "普通车位");
+        createSeedSpace("A-020", "NORMAL", "B1", "普通车位");
+        createSeedSpace("A-021", "NORMAL", "B1", "普通车位");
+        createSeedSpace("A-022", "NORMAL", "B1", "普通车位");
+        createSeedSpace("A-023", "NORMAL", "B1", "普通车位");
+        createSeedSpace("A-024", "NORMAL", "B1", "普通车位");
+        createSeedSpace("A-101", "NORMAL", "B2", "普通车位");
+        createSeedSpace("A-102", "NORMAL", "B2", "普通车位");
+        createSeedSpace("B-001", "NEW_ENERGY", "B1", "新能源车位");
+        createSeedSpace("B-002", "NEW_ENERGY", "B1", "新能源车位");
+        createSeedSpace("B-003", "NEW_ENERGY", "B1", "新能源车位");
+        createSeedSpace("B-004", "NEW_ENERGY", "B1", "新能源车位");
+        createSeedSpace("C-001", "VIP", "B1", "VIP 车位");
+        createSeedSpace("C-002", "VIP", "B1", "VIP 车位");
+    }
+
+    private void createSeedSpace(String spaceCode, String type, String floor, String remark) {
+        String spaceId = nextId("S", SEQ_SPACE);
+        Map<String, String> space = new LinkedHashMap<>();
+        space.put("spaceId", spaceId);
+        space.put("spaceCode", spaceCode);
+        space.put("type", type);
+        space.put("status", "FREE");
+        space.put("floor", floor);
+        space.put("remark", remark);
+        redisTemplate.opsForHash().putAll(spaceKey(spaceId), space);
+        redisTemplate.opsForSet().add(spaceAllKey(), spaceId);
+        redisTemplate.opsForValue().set(spaceCodeKey(spaceCode), spaceId);
+    }
+
+    private void repairLegacyCurrentParkingSpaces() {
+        List<Map<String, Object>> currentRecords = listCurrentParkingRecords();
+        List<String> occupiedSpaceCodes = new ArrayList<>(currentRecords.stream()
+                .map(record -> String.valueOf(record.get("spaceCode")))
+                .filter(spaceCode -> !spaceCode.isBlank() && !spaceCode.startsWith("AUTO-") && getSpaceByCode(spaceCode) != null)
+                .toList());
+
+        for (Map<String, Object> record : currentRecords) {
+            String spaceCode = String.valueOf(record.get("spaceCode"));
+            if (!spaceCode.isBlank() && !spaceCode.startsWith("AUTO-") && getSpaceByCode(spaceCode) != null) {
+                continue;
+            }
+
+            String reassignedSpaceCode = findFreeSpaceCodeByType("NORMAL", occupiedSpaceCodes);
+            if (reassignedSpaceCode == null) {
+                continue;
+            }
+            redisTemplate.opsForHash().put(parkingRecordKey(String.valueOf(record.get("recordId"))), "spaceCode", reassignedSpaceCode);
+            occupiedSpaceCodes.add(reassignedSpaceCode);
+        }
+    }
+
+    private void syncSpaceStatusWithCurrentRecords() {
+        for (Map<String, Object> space : listSpaces()) {
+            redisTemplate.opsForHash().put(spaceKey(String.valueOf(space.get("spaceId"))), "status", "FREE");
+        }
+        for (Map<String, Object> record : listCurrentParkingRecords()) {
+            updateSpaceOccupancy(String.valueOf(record.get("spaceCode")), "OCCUPIED");
+        }
+    }
+
+    private String resolveEntrySpaceCode(String requestedSpaceCode, String requestedSpaceType) {
+        if (!requestedSpaceCode.isBlank()) {
+            Map<String, Object> space = getSpaceByCode(requestedSpaceCode);
+            if (space == null) {
+                throw new IllegalArgumentException("指定车位不存在");
+            }
+            if ("OCCUPIED".equals(space.get("status"))) {
+                throw new IllegalStateException("指定车位已被占用");
+            }
+            if (!requestedSpaceType.isBlank() && !requestedSpaceType.equals(space.get("type"))) {
+                throw new IllegalArgumentException("指定车位与所选车位类型不匹配");
+            }
+            return requestedSpaceCode;
+        }
+
+        String targetType = requestedSpaceType.isBlank() ? "NORMAL" : requestedSpaceType;
+        String freeSpaceCode = findFreeSpaceCodeByType(targetType, List.of());
+        if (freeSpaceCode == null) {
+            throw new IllegalStateException("当前所选类型已无空闲车位");
+        }
+        return freeSpaceCode;
+    }
+
+    private String findFreeSpaceCodeByType(String type, List<String> excludedSpaceCodes) {
+        for (Map<String, Object> space : listSpaces()) {
+            if (!type.equals(space.get("type"))) {
+                continue;
+            }
+            if (!"FREE".equals(space.get("status"))) {
+                continue;
+            }
+            if (excludedSpaceCodes.contains(space.get("spaceCode"))) {
+                continue;
+            }
+            return String.valueOf(space.get("spaceCode"));
+        }
+        return null;
+    }
+
+    private void updateSpaceOccupancy(String spaceCode, String status) {
+        if (spaceCode == null || spaceCode.isBlank()) {
+            return;
+        }
+        String spaceId = redisTemplate.opsForValue().get(spaceCodeKey(spaceCode));
+        if (spaceId != null) {
+            redisTemplate.opsForHash().put(spaceKey(spaceId), "status", status);
+        }
+    }
+
+    private String normalizeSpaceType(String spaceType) {
+        String normalized = spaceType == null ? "" : spaceType.trim().toUpperCase();
+        if (normalized.isBlank()) {
+            return "";
+        }
+        return switch (normalized) {
+            case "NORMAL", "NEW_ENERGY", "VIP" -> normalized;
+            default -> throw new IllegalArgumentException("车位类型不支持");
+        };
+    }
+
+    private String normalizeSpaceCode(String spaceCode) {
+        return spaceCode == null ? "" : spaceCode.trim().toUpperCase();
     }
 
     private String extractToken(String authorizationHeader) {
@@ -577,5 +835,17 @@ public class RedisDataStore {
 
     private String userPaymentsKey(String userId) {
         return "user:" + userId + ":payments";
+    }
+
+    private String spaceKey(String spaceId) {
+        return "parking:space:" + spaceId;
+    }
+
+    private String spaceAllKey() {
+        return "parking:space:all";
+    }
+
+    private String spaceCodeKey(String spaceCode) {
+        return "parking:space:code:" + normalizeSpaceCode(spaceCode);
     }
 }

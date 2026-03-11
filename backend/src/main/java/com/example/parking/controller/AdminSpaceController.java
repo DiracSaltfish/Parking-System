@@ -38,18 +38,18 @@ public class AdminSpaceController {
 
     @PostMapping("/spaces")
     public ApiResponse<Map<String, Object>> createSpace(@Valid @RequestBody ParkingSpaceSaveRequest request) {
-        return ApiResponse.todo("已创建接口骨架，等待接入 Redis", adminSpaceService.createSpace(request));
+        return ApiResponse.success("车位创建成功", adminSpaceService.createSpace(request));
     }
 
     @PutMapping("/spaces/{spaceId}")
     public ApiResponse<Map<String, Object>> updateSpace(@PathVariable String spaceId,
                                                         @Valid @RequestBody ParkingSpaceSaveRequest request) {
-        return ApiResponse.todo("已创建接口骨架，等待接入 Redis", adminSpaceService.updateSpace(spaceId, request));
+        return ApiResponse.success("车位更新成功", adminSpaceService.updateSpace(spaceId, request));
     }
 
     @DeleteMapping("/spaces/{spaceId}")
     public ApiResponse<Map<String, Object>> deleteSpace(@PathVariable String spaceId) {
-        return ApiResponse.todo("已创建接口骨架，等待接入 Redis", adminSpaceService.deleteSpace(spaceId));
+        return ApiResponse.success("车位删除成功", adminSpaceService.deleteSpace(spaceId));
     }
 
     @GetMapping("/fee-rule")

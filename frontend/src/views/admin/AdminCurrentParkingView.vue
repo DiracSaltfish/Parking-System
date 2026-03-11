@@ -6,8 +6,7 @@ import {
   normalizePlateNumber,
   patternRule,
   plateNumberPattern,
-  requiredRule,
-  spaceCodePattern
+  requiredRule
 } from '@/utils/validators'
 
 const keyword = ref('')
@@ -20,7 +19,7 @@ const formRef = ref()
 
 const form = reactive({
   plateNumber: '',
-  spaceId: ''
+  spaceType: 'NORMAL'
 })
 
 const rules = {
@@ -28,22 +27,7 @@ const rules = {
     requiredRule('请输入车牌号'),
     patternRule(plateNumberPattern, '请输入正确的车牌号')
   ],
-  spaceId: [
-    {
-      validator: (_, value, callback) => {
-        if (!value) {
-          callback()
-          return
-        }
-        if (!spaceCodePattern.test(value.trim().toUpperCase())) {
-          callback(new Error('车位编号格式示例：A-021'))
-          return
-        }
-        callback()
-      },
-      trigger: ['blur', 'change']
-    }
-  ]
+  spaceType: [requiredRule('请选择车位类型')]
 }
 
 async function loadCurrentParking() {
@@ -63,7 +47,7 @@ async function loadCurrentParking() {
 
 function openDialog() {
   form.plateNumber = ''
-  form.spaceId = ''
+  form.spaceType = 'NORMAL'
   dialogVisible.value = true
 }
 
@@ -77,7 +61,7 @@ async function submitEntry() {
   try {
     await createParkingEntry({
       plateNumber: normalizePlateNumber(form.plateNumber),
-      spaceId: form.spaceId?.trim().toUpperCase() || undefined
+      spaceType: form.spaceType
     })
     ElMessage.success('车辆已入场，计费已从当前时刻开始')
     dialogVisible.value = false
@@ -134,14 +118,19 @@ onMounted(loadCurrentParking)
             @blur="form.plateNumber = normalizePlateNumber(form.plateNumber)"
           />
         </el-form-item>
-        <el-form-item label="车位编号" prop="spaceId">
-          <el-input
-            v-model.trim="form.spaceId"
-            maxlength="5"
-            placeholder="可选，例如：A-021；留空则自动分配"
-            @blur="form.spaceId = form.spaceId.trim().toUpperCase()"
-          />
+        <el-form-item label="车位类型" prop="spaceType">
+          <el-select v-model="form.spaceType" class="full-width">
+            <el-option label="普通车位" value="NORMAL" />
+            <el-option label="新能源车位" value="NEW_ENERGY" />
+            <el-option label="VIP 车位" value="VIP" />
+          </el-select>
         </el-form-item>
+        <el-alert
+          title="系统会按所选车位类型自动分配空闲车位，并同步更新车位占用状态"
+          type="info"
+          :closable="false"
+          show-icon
+        />
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -155,5 +144,9 @@ onMounted(loadCurrentParking)
 .summary-line {
   margin-bottom: 16px;
   color: #606266;
+}
+
+.full-width {
+  width: 100%;
 }
 </style>

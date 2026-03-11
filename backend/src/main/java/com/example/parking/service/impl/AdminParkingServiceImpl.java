@@ -41,16 +41,12 @@ public class AdminParkingServiceImpl implements AdminParkingService {
 
     @Override
     public Map<String, Object> entry(ParkingEntryRequest request) {
-        return toParkingView(dataStore.createParkingEntry(request.plateNumber(), request.spaceId()), true);
+        return toParkingView(dataStore.createParkingEntry(request.plateNumber(), request.spaceId(), request.spaceType()), true);
     }
 
     @Override
     public Map<String, Object> exit(ParkingExitRequest request) {
-        return Map.of(
-                "recordId", request.recordId(),
-                "recordStatus", "COMPLETED",
-                "message", "已办理出场，当前为骨架返回"
-        );
+        return toParkingView(dataStore.completeParkingExit(request.recordId()), false);
     }
 
     @Override
