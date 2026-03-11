@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>停车场管理系统 - 登录</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-shell">
+      <section class="brand-panel">
+        <p class="eyebrow">HTML + CSS + JavaScript</p>
+        <h1>停车场管理系统</h1>
+        <p class="muted">
+          原生前端版本。账号为 <code>admin</code> 时进入管理员端，其余账号进入普通用户端。
+        </p>
+        <div class="tip-list">
+          <div class="tip-card">
+            <strong>管理员</strong>
+            <span>admin / Admin123</span>
+          </div>
+          <div class="tip-card">
+            <strong>普通用户</strong>
+            <span>zhangsan / User1234</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="form-card">
+        <h2>登录系统</h2>
+        <form id="loginForm" class="stack-form">
+          <label class="field">
+            <span>账号</span>
+            <input id="username" name="username" type="text" maxlength="16" placeholder="请输入账号" required />
+          </label>
+          <label class="field">
+            <span>密码</span>
+            <input id="password" name="password" type="password" maxlength="20" placeholder="请输入密码" required />
+          </label>
+          <button class="primary-btn" type="submit">登录</button>
+        </form>
+        <p class="inline-note">
+          没有账号？
+          <a href="./register.html">前往注册</a>
+        </p>
+        <div id="messageBox" class="message-box" hidden></div>
+      </section>
+    </main>
+
+    <script type="module" src="./assets/login.js"></script>
+  </body>
+</html>

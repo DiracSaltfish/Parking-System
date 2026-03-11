@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>停车场管理系统 - 注册</title>
+    <link rel="stylesheet" href="./assets/styles.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-shell">
+      <section class="brand-panel">
+        <p class="eyebrow">Native Frontend</p>
+        <h1>创建普通用户账号</h1>
+        <p class="muted">注册后可直接绑定车牌、查询停车信息、查看缴费记录。</p>
+      </section>
+
+      <section class="form-card">
+        <h2>用户注册</h2>
+        <form id="registerForm" class="stack-form">
+          <label class="field">
+            <span>账号</span>
+            <input id="username" name="username" type="text" maxlength="16" placeholder="4-16 位字母、数字或下划线" required />
+          </label>
+          <label class="field">
+            <span>密码</span>
+            <input id="password" name="password" type="password" maxlength="20" placeholder="至少包含字母和数字" required />
+          </label>
+          <label class="field">
+            <span>确认密码</span>
+            <input id="confirmPassword" name="confirmPassword" type="password" maxlength="20" placeholder="请再次输入密码" required />
+          </label>
+          <label class="field">
+            <span>手机号</span>
+            <input id="phone" name="phone" type="text" maxlength="11" placeholder="请输入 11 位手机号" required />
+          </label>
+          <label class="field">
+            <span>姓名</span>
+            <input id="realName" name="realName" type="text" maxlength="20" placeholder="请输入真实姓名" required />
+          </label>
+          <button class="primary-btn" type="submit">注册账号</button>
+        </form>
+        <p class="inline-note">
+          已有账号？
+          <a href="./index.html">返回登录</a>
+        </p>
+        <div id="messageBox" class="message-box" hidden></div>
+      </section>
+    </main>
+
+    <script type="module" src="./assets/register.js"></script>
+  </body>
+</html>
